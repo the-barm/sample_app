@@ -28,4 +28,29 @@ class UsersIndexTest < ActionDispatch::IntegrationTest
     get users_path
     assert_select 'a', text: 'delete', count: 0
   end
+  
+  test "checking for presence of non-activated users" do
+    get signup_path
+    assert_difference 'User.count', 1 do
+      post users_path, user: { name:  "I SHOULD NOT APPEAR",
+                               email: "ishouldnotappear@example.com",
+                               password:              "password",
+                               password_confirmation: "password" }
+    end
+    user = assigns(:user)
+    assert_not user.activated?
+    log_in_as(@non_admin)
+    get users_path
+    present_users = User.paginate(page: 1)
+      (1..present_users.total_pages).each do |page|
+        page_of_users = User.paginate(page: page)
+        page_of_users.each do |test_user|
+          if user.name == test_user.name 
+            assert_select 'a[href=?]', user_path(user), {count: 0, 
+                                                         text: user.name}
+          end
+        end
+      end
+  end
+  
 end
